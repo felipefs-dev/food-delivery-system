@@ -1,75 +1,108 @@
-import tkinter as tk
-from tkinter import messagebox
-
-menu = {
-    "Hamburguer": 15.00,
-    "Pizza": 30.00,
-    "Refrigerante": 5.00,
-    "Batata Frita": 10.00
-}
+import sqlite3
 
 carrinho = []
 
-def adicionar_item(item):
+menu = {
+    "Hamburguer": 15,
+    "Pizza": 30,
+    "Refrigerante": 5
+}
+
+def adicionar(item):
     carrinho.append(item)
-    atualizar_carrinho()
+    print(f"{item} adicionado!")
 
-def remover_item():
-    try:
-        selecionado = lista.curselection()[0]
-        carrinho.pop(selecionado)
-        atualizar_carrinho()
-    except:
-        messagebox.showwarning("Aviso", "Selecione um item para remover")
-
-def limpar_carrinho():
-    carrinho.clear()
-    atualizar_carrinho()
-
-def atualizar_carrinho():
-    lista.delete(0, tk.END)
+def ver_carrinho():
     total = 0
+    print("\nCarrinho:")
+    
+    if not carrinho:
+        print("Carrinho vazio!")
+        return 0
+
     for item in carrinho:
-        lista.insert(tk.END, f"{item} - R${menu[item]:.2f}")
+        print(f"- {item} R${menu[item]}")
         total += menu[item]
-    label_total.config(text=f"Total: R${total:.2f}")
+
+    print(f"Total: R${total}")
+    return total
 
 def finalizar():
     if not carrinho:
-        messagebox.showwarning("Aviso", "Carrinho vazio!")
+        print("Carrinho vazio!")
+        input("\nPressione ENTER para continuar...")
         return
-    messagebox.showinfo("Pedido", "Pedido finalizado com sucesso!")
+
+    total = ver_carrinho()
+
+    conn = sqlite3.connect("pedidos.db")
+    cursor = conn.cursor()
+
+    itens_str = ", ".join(carrinho)
+
+    cursor.execute(
+        "INSERT INTO pedidos (itens, total) VALUES (?, ?)",
+        (itens_str, total)
+    )
+
+    conn.commit()
+    conn.close()
+
+    print("\nPedido salvo no banco!")
+
     carrinho.clear()
-    atualizar_carrinho()
 
-janela = tk.Tk()
-janela.title("Sistema de Delivery")
-janela.geometry("350x550")
-janela.configure(bg="#f5f5f5")
+    input("\nPressione ENTER para continuar...")
 
-tk.Label(janela, text="Cardápio", font=("Arial", 16, "bold"), bg="#f5f5f5").pack(pady=10)
+def ver_pedidos():
+    conn = sqlite3.connect("pedidos.db")
+    cursor = conn.cursor()
 
-for item in menu:
-    tk.Button(
-        janela,
-        text=f"{item} - R${menu[item]:.2f}",
-        width=25,
-        bg="#4CAF50",
-        fg="white",
-        command=lambda i=item: adicionar_item(i)
-    ).pack(pady=3)
+    cursor.execute("SELECT * FROM pedidos")
+    pedidos = cursor.fetchall()
 
-tk.Label(janela, text="\nCarrinho", font=("Arial", 14, "bold"), bg="#f5f5f5").pack()
+    print("\n📦 Histórico de pedidos:\n")
 
-lista = tk.Listbox(janela, width=40, height=10)
-lista.pack(pady=5)
+    if not pedidos:
+        print("Nenhum pedido encontrado.")
+    else:
+        for pedido in pedidos:
+            print(f"ID: {pedido[0]}")
+            print(f"Itens: {pedido[1]}")
+            print(f"Total: R${pedido[2]}")
+            print("-" * 20)
 
-label_total = tk.Label(janela, text="Total: R$0.00", font=("Arial", 12, "bold"), bg="#f5f5f5")
-label_total.pack(pady=5)
+    conn.close()
 
-tk.Button(janela, text="Remover Item", bg="#f44336", fg="white", command=remover_item).pack(pady=2)
-tk.Button(janela, text="Limpar Carrinho", bg="#ff9800", fg="white", command=limpar_carrinho).pack(pady=2)
-tk.Button(janela, text="Finalizar Pedido", bg="#2196F3", fg="white", command=finalizar).pack(pady=10)
+    input("\nPressione ENTER para continuar...")
 
-janela.mainloop()
+while True:
+    print("\n===== MENU =====")
+    print("1 - Hamburguer")
+    print("2 - Pizza")
+    print("3 - Refrigerante")
+    print("4 - Ver carrinho")
+    print("5 - Finalizar pedido")
+    print("6 - Ver histórico de pedidos")
+    print("0 - Sair")
 
+    op = input("Escolha: ")
+
+    if op == "1":
+        adicionar("Hamburguer")
+    elif op == "2":
+        adicionar("Pizza")
+    elif op == "3":
+        adicionar("Refrigerante")
+    elif op == "4":
+        ver_carrinho()
+        input("\nPressione ENTER para continuar...")
+    elif op == "5":
+        finalizar()
+    elif op == "6":
+        ver_pedidos()
+    elif op == "0":
+        print("Saindo...")
+        break
+    else:
+        print("Opção inválida!")
